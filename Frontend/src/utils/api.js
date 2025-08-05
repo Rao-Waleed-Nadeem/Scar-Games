@@ -22,7 +22,7 @@ api.interceptors.response.use(
 
     if (error.response?.status === 401) {
       // Optional: redirect or handle unauthorized access
-      window.location.href = "/signin";
+      window.location.href = "/login";
     }
 
     return Promise.reject(error);

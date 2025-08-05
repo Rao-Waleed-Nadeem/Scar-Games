@@ -23,7 +23,7 @@ const MotionWrapper = ({ children }) => (
   </motion.div>
 );
 
-export default function LogoutPage() {
+export default function Logout() {
   const [loggedOut, setLoggedOut] = useState(false);
   const dispatch = useDispatch();
   const navigate = useNavigate();

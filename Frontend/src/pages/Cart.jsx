@@ -18,7 +18,7 @@ const textStyle = "text-white";
 const cardStyle =
   "bg-white/10 backdrop-blur-md p-6 rounded-2xl shadow-xl hover:shadow-2xl transition-shadow duration-300";
 
-export default function CartPage() {
+export default function Cart() {
   const navigate = useNavigate();
   const [newCarts, setNewCarts] = useState([]);
   const { carts } = useSelector((s) => s.carts);
