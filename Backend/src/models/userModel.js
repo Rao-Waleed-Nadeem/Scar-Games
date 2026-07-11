@@ -4,8 +4,8 @@ const fixBigInt = (obj) => {
   if (!obj) return obj;
   return JSON.parse(
     JSON.stringify(obj, (_, value) =>
-      typeof value === "bigint" ? Number(value) : value
-    )
+      typeof value === "bigint" ? Number(value) : value,
+    ),
   );
 };
 
@@ -30,7 +30,7 @@ export const createUser = async ({ username, email, password, role }) => {
 
 export const getUserById = async (id) => {
   const result = await sql.query`
-    SELECT id, username, email FROM Users WHERE id = ${id}
+    SELECT user_id, username, email, role FROM Users WHERE user_id = ${id}
   `;
   return result.recordset[0];
 };

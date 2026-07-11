@@ -19,9 +19,13 @@ const port = process.env.PORT || 8000;
 // CORS setup for frontend communication
 app.use(
   cors({
-    origin: ["http://localhost:5173", "http://localhost:3000"],
+    origin: [
+      "http://localhost:5173",
+      "http://localhost:3000",
+      "http://localhost:5174",
+    ],
     credentials: true,
-  })
+  }),
 );
 
 // Middleware
@@ -51,7 +55,7 @@ app.use(
       secure: false, // Set to true if using HTTPS
       maxAge: 1000 * 60 * 60, // 1 hour
     },
-  })
+  }),
 );
 
 // Connect DB

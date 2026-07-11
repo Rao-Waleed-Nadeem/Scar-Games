@@ -4,7 +4,11 @@
   "main": "index.js",
   "scripts": {
     "start": "node src/server.js",
-    "dev": "nodemon src/server.js"
+    "dev": "nodemon src/server.js",
+    "db:create": "node database/setup-db.js",
+    "db:seed": "node database/setup-db.js",
+    "db:setup": "node database/setup-db.js",
+    "db:reset": "node database/setup-db.js"
   },
   "keywords": [],
   "author": "",
