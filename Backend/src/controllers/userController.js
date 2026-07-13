@@ -5,6 +5,7 @@ import {
   findUserByEmail,
   createUser,
   getUserById,
+  findUserByUsername,
 } from "../models/userModel.js";
 
 const JWT_SECRET = process.env.JWT_SECRET || "your_secret_key";
@@ -79,15 +80,21 @@ export const signup = async (req, res) => {
 
 export const login = async (req, res) => {
   try {
-    const { email, password } = req.body;
+    const { identifier, password } = req.body;
 
-    if (!email || !password) {
+    console.log("Login request body:", req.body);
+
+    if (!identifier || !password) {
       return res
         .status(400)
-        .json({ message: "Email and password are required" });
+        .json({ message: "Email/Username and password are required" });
     }
 
-    const user = await findUserByEmail(email);
+    var user = await findUserByEmail(identifier);
+    if (!user) {
+      user = await findUserByUsername(identifier);
+    }
+
     if (!user) {
       return res.status(404).json({ message: "User not found" });
     }

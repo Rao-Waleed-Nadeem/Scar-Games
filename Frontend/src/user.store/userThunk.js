@@ -48,7 +48,7 @@ const loginUser = (formData) => async (dispatch) => {
     }
 
     const data = {
-      email: formData.email,
+      identifier: formData.identifier,
       password: formData.password,
     };
 

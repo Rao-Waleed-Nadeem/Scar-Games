@@ -30,7 +30,7 @@ export default function Login() {
 
   // Manage form state
   const [formData, setFormData] = useState({
-    email: "",
+    identifier: "",
     password: "",
   });
 
@@ -74,11 +74,11 @@ export default function Login() {
         </h1>
         <form onSubmit={handleSubmit}>
           <input
-            type="email"
-            name="email"
-            value={formData.email}
+            type="text"
+            name="identifier"
+            value={formData.identifier}
             onChange={handleChange}
-            placeholder="Email"
+            placeholder="Email or Username"
             className={inputStyle}
             required
           />
