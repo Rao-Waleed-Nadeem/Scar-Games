@@ -1,8 +1,8 @@
 import express from "express";
 import dotenv from "dotenv";
 import cors from "cors";
-import session from "express-session";
-import MSSQLStore from "connect-mssql-v2";
+// import session from "express-session";
+// import MSSQLStore from "connect-mssql-v2";
 import { connectDB, sql } from "./utils/db.js";
 import gamesRoutes from "./routes/gameRoutes.js";
 import orderRoutes from "./routes/orderRoutes.js";
@@ -35,31 +35,31 @@ app.use(
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// Session configuration
-app.use(
-  session({
-    secret: process.env.SESSION_SECRET || "super-secret-key",
-    resave: false,
-    saveUninitialized: false,
-    store: new MSSQLStore({
-      ttl: 3600,
-      user: process.env.DB_USER,
-      password: process.env.DB_PASSWORD,
-      server: process.env.DB_SERVER,
-      database: process.env.DB_DATABASE,
-      options: {
-        encrypt: false,
-        enableArithAbort: true,
-      },
-      table: "sessions",
-    }),
-    cookie: {
-      httpOnly: true,
-      secure: false, // Set to true if using HTTPS
-      maxAge: 1000 * 60 * 60, // 1 hour
-    },
-  }),
-);
+// // Session configuration
+// app.use(
+//   session({
+//     secret: process.env.SESSION_SECRET || "super-secret-key",
+//     resave: false,
+//     saveUninitialized: false,
+//     store: new MSSQLStore({
+//       ttl: 3600,
+//       user: process.env.DB_USER,
+//       password: process.env.DB_PASSWORD,
+//       server: process.env.DB_SERVER,
+//       database: process.env.DB_DATABASE,
+//       options: {
+//         encrypt: false,
+//         enableArithAbort: true,
+//       },
+//       table: "sessions",
+//     }),
+//     cookie: {
+//       httpOnly: true,
+//       secure: false, // Set to true if using HTTPS
+//       maxAge: 1000 * 60 * 60, // 1 hour
+//     },
+//   }),
+// );
 
 // console.log("Server.js printing before connecting db");
 

@@ -17,6 +17,9 @@ const registerUser = (formData) => async (dispatch) => {
       },
     });
 
+    console.log("Frontend response: ");
+    console.log(response.data);
+
     const { user, accessToken } = response.data;
     sessionStorage.setItem("accessToken", accessToken);
     dispatch(setUser(user));
@@ -24,7 +27,7 @@ const registerUser = (formData) => async (dispatch) => {
   } catch (error) {
     console.error(
       "Error registering user:",
-      error.response?.data || error.message
+      error.response?.data || error.message,
     );
   } finally {
     dispatch(setLoading(false));
@@ -87,7 +90,7 @@ const currentUser = () => async (dispatch) => {
   } catch (error) {
     console.error(
       "Error fetching current user:",
-      error.response?.data || error.message
+      error.response?.data || error.message,
     );
     dispatch(setUser(null));
     dispatch(setUserLoggedIn(false)); // Set userLoggedIn to false on error

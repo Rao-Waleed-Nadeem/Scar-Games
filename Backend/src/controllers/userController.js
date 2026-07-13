@@ -14,47 +14,66 @@ export const signup = async (req, res) => {
     const { username, email, password, role } = req.body;
 
     if (!username || !email || !password) {
-      return res.status(400).json({ message: "All fields are required" });
+      return res.status(400).json({
+        message: "All fields are required",
+      });
     }
 
     const existingUser = await findUserByEmail(email);
+
     if (existingUser) {
-      return res.status(400).json({ message: "User already exists" });
+      return res.status(400).json({
+        message: "User already exists",
+      });
     }
 
+    const finalRole = role || "Customer";
+
     const hashedPassword = await bcrypt.hash(password, 10);
-    await createUser({
+
+    // SQL Server generates user_id automatically
+    const newUser = await createUser({
       username,
       email,
       password: hashedPassword,
-      role: role || "Customer",
+      role: finalRole,
     });
 
-    req.session.user = {
-      username,
-      email,
-      role: role || "Customer",
-    };
+    // req.session.user = {
+    //   user_id: newUser.user_id,
+    //   username: newUser.username,
+    //   email: newUser.email,
+    //   role: newUser.role,
+    // };
 
     const accessToken = jwt.sign(
-      { email, username, role: "Customer" || "Customer" },
+      {
+        user_id: newUser.user_id,
+        username: newUser.username,
+        email: newUser.email,
+        role: newUser.role,
+      },
       process.env.JWT_SECRET,
-      { expiresIn: "1h" }
+      {
+        expiresIn: "1h",
+      },
     );
 
-    res.status(201).json({
+    return res.status(201).json({
       message: "User registered successfully",
       user: {
-        user_id,
-        username,
-        email,
-        role: role || "Customer",
+        user_id: newUser.user_id,
+        username: newUser.username,
+        email: newUser.email,
+        role: newUser.role,
       },
       accessToken,
     });
   } catch (error) {
     console.error("Signup Error:", error);
-    res.status(500).json({ message: "Internal server error" });
+    return res.status(500).json({
+      message: "Internal server error",
+    });
   }
 };
 
@@ -83,11 +102,11 @@ export const login = async (req, res) => {
       JWT_SECRET,
       {
         expiresIn: "6h",
-      }
+      },
     );
 
     // Save userId in session
-    req.session.userId = user.user_id;
+    // req.session.userId = user.user_id;
 
     // console.log("user: ", user);
 
@@ -151,11 +170,11 @@ export const logout = (req, res) => {
 
 export const currentUser = async (req, res) => {
   try {
-    if (!req.session.userId) {
+    if (!req.user.userId) {
       return res.status(401).json({ message: "Not logged in" });
     }
 
-    const user = await getUserById(req.session.userId);
+    const user = await getUserById(req.user.userId);
     if (!user) {
       return res.status(404).json({ message: "User not found" });
     }
