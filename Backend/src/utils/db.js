@@ -11,17 +11,21 @@ const config = {
   port: parseInt(process.env.DB_PORT), // 👈 Add this
   database: process.env.DB_DATABASE,
   options: {
-    encrypt: true,
+    encrypt: false,
     trustServerCertificate: true,
   },
 };
+
+// console.log("In db.js");
+
+// console.log(config);
 
 export const connectDB = async () => {
   try {
     await sql.connect(config);
     console.log("✅ Connected to the SQL Server");
   } catch (err) {
-    console.error("❌ Error connecting to SQL Server:", err.message);
+    console.error(err);
   }
 };
 

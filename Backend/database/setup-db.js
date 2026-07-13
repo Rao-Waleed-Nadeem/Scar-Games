@@ -5,7 +5,6 @@ import dotenv from "dotenv";
 
 dotenv.config();
 
-// Use CWD-anchored relative paths so this works regardless of module URL quirks.
 const sqlDir = path.join(process.cwd(), "database");
 
 const config = {
@@ -13,7 +12,7 @@ const config = {
   password: process.env.DB_PASSWORD,
   server: process.env.DB_SERVER,
   port: process.env.DB_PORT ? parseInt(process.env.DB_PORT, 10) : undefined,
-  database: process.env.DB_DATABASE || "master",
+  database: "master",
   options: {
     encrypt: false,
     trustServerCertificate: true,
@@ -25,23 +24,32 @@ const readSqlFile = (relativeFile) => {
   return fs.readFileSync(filePath, "utf8");
 };
 
+// Split into individual batches on standalone GO lines, and run each in order.
+const splitBatches = (sqlText) =>
+  sqlText
+    .split(/^\s*GO\s*$/im)
+    .map((b) => b.trim())
+    .filter((b) => b.length > 0);
+
+const runBatches = async (pool, sqlText, label) => {
+  const batches = splitBatches(sqlText);
+  for (let i = 0; i < batches.length; i++) {
+    console.log(`  ${label} batch ${i + 1}/${batches.length}...`);
+    await pool.request().batch(batches[i]);
+  }
+};
+
 const run = async () => {
   const pool = await sql.connect(config);
   try {
     const schemaSql = readSqlFile("schema.sql");
     const seedSql = readSqlFile("seed.sql");
 
-    // mssql driver doesn't understand GO separators inside a single batch.
-    const stripGo = (sqlText) => sqlText.replace(/\bGO\b\s*\r?\n?/gi, "");
-
-    const schemaSqlStripped = stripGo(schemaSql);
-    const seedSqlStripped = stripGo(seedSql);
-
     console.log("Running schema.sql...");
-    await pool.request().batch(schemaSqlStripped);
+    await runBatches(pool, schemaSql, "schema");
 
     console.log("Running seed.sql...");
-    await pool.request().batch(seedSqlStripped);
+    await runBatches(pool, seedSql, "seed");
 
     console.log("✅ Database setup complete");
   } finally {

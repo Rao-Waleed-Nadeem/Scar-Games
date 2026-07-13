@@ -21,7 +21,8 @@ BEGIN
 END
 GO
 
-/* Seed a couple of games */
+/* Seed a couple of games, inventory, orders + payments — kept in ONE batch
+   because @g1/@g2/@adminId/@custId/@orderId/@total must stay in scope together. */
 DECLARE @g1 INT, @g2 INT;
 
 SELECT @g1 = game_id FROM dbo.Games WHERE title = 'Cyber Runner';
@@ -39,7 +40,6 @@ BEGIN
   VALUES ('Space Detective','Solve mysteries across the galaxy.', 19.99, 'PC', 'Adventure');
   SELECT @g2 = SCOPE_IDENTITY();
 END
-GO
 
 /* Inventory */
 IF NOT EXISTS (SELECT 1 FROM dbo.Inventory WHERE game_id = @g1)
@@ -47,7 +47,6 @@ IF NOT EXISTS (SELECT 1 FROM dbo.Inventory WHERE game_id = @g1)
 
 IF NOT EXISTS (SELECT 1 FROM dbo.Inventory WHERE game_id = @g2)
   INSERT INTO dbo.Inventory (game_id, stock_quantity) VALUES (@g2, 25);
-GO
 
 /* Orders + payments */
 DECLARE @adminId INT, @custId INT;
@@ -74,4 +73,3 @@ BEGIN
   VALUES (@orderId, 'Pending', 'Card');
 END
 GO
-

@@ -16,6 +16,9 @@ dotenv.config();
 const app = express();
 const port = process.env.PORT || 8000;
 
+// console.log("Server.js printing before connecting db");
+// console.log(process.env);
+
 // CORS setup for frontend communication
 app.use(
   cors({
@@ -43,7 +46,7 @@ app.use(
       user: process.env.DB_USER,
       password: process.env.DB_PASSWORD,
       server: process.env.DB_SERVER,
-      database: process.env.DB_NAME,
+      database: process.env.DB_DATABASE,
       options: {
         encrypt: false,
         enableArithAbort: true,
@@ -57,6 +60,16 @@ app.use(
     },
   }),
 );
+
+// console.log("Server.js printing before connecting db");
+
+// console.log({
+//   DB_USER: process.env.DB_USER,
+//   DB_PASSWORD: process.env.DB_PASSWORD,
+//   DB_SERVER: process.env.DB_SERVER,
+//   DB_DATABASE: process.env.DB_DATABASE,
+//   DB_PORT: process.env.DB_PORT,
+// });
 
 // Connect DB
 connectDB();

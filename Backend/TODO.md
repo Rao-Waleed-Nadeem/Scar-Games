@@ -12,3 +12,27 @@
 - [ ] Milestone 8: Implement `db:reset` logic (drop/recreate, then run schema+seed)
 - [ ] Milestone 9: Add `backend/database/README.md`
 - [ ] Milestone 10: Final validation (run from clean DB/Docker volume)
+
+database/
+│
+├── migrations/
+│ ├── 001_create_database.sql
+│ ├── 002_create_users.sql
+│ ├── 003_create_games.sql
+│ ├── 004_create_inventory.sql
+│ ├── 005_create_orders.sql
+│ ├── 006_create_order_items.sql
+│ ├── 007_create_payments.sql
+│ └── 008_indexes.sql
+│
+├── seeds/
+│ ├── 001_users.sql
+│ ├── 002_games.sql
+│ ├── 003_inventory.sql
+│ ├── 004_orders.sql
+│ └── 005_payments.sql
+│
+├── setup-db.js
+├── migrate.js
+├── seed.js
+└── rollback.js
