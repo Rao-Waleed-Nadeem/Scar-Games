@@ -24,11 +24,23 @@ const registerUser = (formData) => async (dispatch) => {
     sessionStorage.setItem("accessToken", accessToken);
     dispatch(setUser(user));
     dispatch(setUserLoggedIn(true)); // Set userLoggedIn to true after successful registration
+
+    return {
+      success: true,
+      status: 201,
+      message: response.data.message || "Account created successfully.",
+    };
   } catch (error) {
     console.error(
       "Error registering user:",
       error.response?.data || error.message,
     );
+
+    return {
+      success: false,
+      status: error.response?.status,
+      message: error.response?.data?.message || "Something went wrong.",
+    };
   } finally {
     dispatch(setLoading(false));
   }

@@ -22,7 +22,9 @@ export const signup = async (req, res) => {
 
     const existingUser = await findUserByEmail(email);
 
-    if (existingUser) {
+    const existingUsername = await findUserByUsername(username);
+
+    if (existingUser || existingUsername) {
       return res.status(400).json({
         message: "User already exists",
       });
@@ -135,30 +137,6 @@ export const login = async (req, res) => {
   }
 };
 
-// export const logout = (req, res) => {
-//   // req.session.destroy((err) => {
-//   //   if (err) {
-//   //     console.error("Logout Error:", err);
-//   //     return res.status(500).json({ message: "Failed to logout" });
-//   //   }
-//   //   res.clearCookie("connect.sid"); // Make sure cookie name matches your session setup
-//   //   res.json({ message: "Logged out successfully" });
-//   // });
-//   if (req.session) {
-//     req.session.destroy((err) => {
-//       if (err) {
-//         console.error("Logout Error:", err);
-//         res.status(500).json({ error: "Logout failed" });
-//       } else {
-//         res.clearCookie("connect.sid"); // Clear the cookie
-//         res.json({ message: "Logged out successfully" });
-//       }
-//     });
-//   } else {
-//     res.status(400).json({ error: "No active session" });
-//   }
-// };
-
 export const logout = (req, res) => {
   if (req.session) {
     req.session.destroy((err) => {
@@ -192,21 +170,3 @@ export const currentUser = async (req, res) => {
     res.status(500).json({ message: "Internal server error" });
   }
 };
-
-// app.get("/api/profile", verifyToken, async (req, res) => {
-//   res.json({ message: `Welcome, user ${req.user.email}` });
-// });
-
-// function verifyToken(req, res, next) {
-//   const authHeader = req.headers["authorization"];
-//   const token = authHeader?.split(" ")[1];
-//   if (!token) return res.status(401).json({ error: "Access denied" });
-
-//   try {
-//     const decoded = jwt.verify(token, JWT_SECRET);
-//     req.user = decoded;
-//     next();
-//   } catch (err) {
-//     res.status(401).json({ error: "Invalid token" });
-//   }
-// }
