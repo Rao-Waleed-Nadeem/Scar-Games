@@ -42,9 +42,11 @@ const loginUser = (formData) => async (dispatch) => {
     // Check if already logged in
     const token = sessionStorage.getItem("accessToken");
     if (token) {
-      console.warn("User is already logged in.");
-      dispatch(setLoading(false));
-      return; // Stop login if already logged in
+      return {
+        success: false,
+        status: 409,
+        message: "You are already logged in.",
+      };
     }
 
     const data = {
@@ -58,8 +60,18 @@ const loginUser = (formData) => async (dispatch) => {
     sessionStorage.setItem("accessToken", accessToken);
     dispatch(setUser(user));
     dispatch(setUserLoggedIn(true)); // Set userLoggedIn to true after successful login
+
+    return {
+      success: true,
+      status: 200,
+      message: response.data.message || "Login successful.",
+    };
   } catch (error) {
-    console.error("Error logging in:", error.response?.data || error.message);
+    return {
+      success: false,
+      status: error.response?.status,
+      message: error.response?.data?.message || "Something went wrong.",
+    };
   } finally {
     dispatch(setLoading(false));
   }
