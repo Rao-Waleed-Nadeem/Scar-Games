@@ -33,6 +33,23 @@ CREATE TABLE dbo.Users (
 );
 GO
 
+/* Temporary signup verification table for email OTP */
+IF OBJECT_ID('dbo.EmailVerifications','U') IS NOT NULL DROP TABLE dbo.EmailVerifications;
+GO
+
+CREATE TABLE dbo.EmailVerifications (
+  verification_id INT IDENTITY(1,1) PRIMARY KEY,
+  username        NVARCHAR(100) NOT NULL,
+  email           NVARCHAR(255) NOT NULL,
+  password_hash   NVARCHAR(255) NOT NULL,
+  otp_hash        NVARCHAR(255) NOT NULL,
+  expires_at      DATETIME2 NOT NULL,
+  created_at      DATETIME2 NOT NULL DEFAULT SYSUTCDATETIME(),
+  CONSTRAINT UQ_EmailVerifications_email UNIQUE (email),
+  CONSTRAINT CK_EmailVerifications_expires CHECK (expires_at > created_at)
+);
+GO
+
 CREATE TABLE dbo.Games (
   game_id       INT IDENTITY(1,1) PRIMARY KEY,
   title         NVARCHAR(200) NOT NULL,
