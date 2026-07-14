@@ -1,6 +1,8 @@
 // Authentication controller skeleton for email verification signup.
 // Business logic is implemented in later milestones.
 
+import { findUserByEmail } from "../models/userModel.js";
+
 function isValidEmail(email) {
   return typeof email === "string" && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
 }
@@ -54,11 +56,19 @@ async function signup(req, res) {
     });
   }
 
-  // Continue to next milestone for duplicate check / OTP generation.
+  // Milestone M09: Duplicate email check before any OTP generation/storage.
+  const existing = await findUserByEmail(email);
+  if (existing) {
+    return res.status(409).json({
+      success: false,
+      message: "Email already registered.",
+    });
+  }
+
+  // Continue to next milestone for OTP generation.
   return res.status(200).json({
     success: true,
     message: "Signup request validation passed.",
-    // Frontend may ignore extra fields, but we keep email for navigation.
     email,
   });
 }
