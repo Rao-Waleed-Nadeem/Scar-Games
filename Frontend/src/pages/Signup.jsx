@@ -24,6 +24,39 @@ const MotionWrapper = ({ children }) => (
   </motion.div>
 );
 
+const EyeIcon = () => (
+  <svg
+    xmlns="http://www.w3.org/2000/svg"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="2"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    className="w-5 h-5"
+  >
+    <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8Z" />
+    <circle cx="12" cy="12" r="3" />
+  </svg>
+);
+
+const EyeOffIcon = () => (
+  <svg
+    xmlns="http://www.w3.org/2000/svg"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="2"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    className="w-5 h-5"
+  >
+    <path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-3.35 2.9A9.12 9.12 0 0 1 12 20c-7 0-11-8-11-8a18.5 18.5 0 0 1 4.22-5.94" />
+    <path d="M14.12 14.12a3 3 0 1 1-4.24-4.24" />
+    <path d="M1 1l22 22" />
+  </svg>
+);
+
 // Small helper so each field can render its own red message consistently.
 const FieldError = ({ message }) =>
   message ? (
@@ -41,6 +74,7 @@ export default function Signup() {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
 
   // One error slot per field, plus a general slot for server-side failures
   // (e.g. "User already exists").
@@ -167,18 +201,27 @@ export default function Signup() {
             <FieldError message={errors.email} />
           </div>
 
-          <div className="mt-4">
+          <div className="relative mt-4">
             <input
-              type="password"
+              type={showPassword ? "text" : "password"}
               placeholder="Password"
               value={password}
               onChange={(e) => {
                 setPassword(e.target.value);
                 clearError("password");
               }}
-              className={inputStyle}
+              className={`${inputStyle} pr-12`}
               required
             />
+            <button
+              type="button"
+              onClick={() => setShowPassword((prev) => !prev)}
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-white/70 hover:text-white cursor-pointer"
+              aria-label={showPassword ? "Hide password" : "Show password"}
+              tabIndex={-1}
+            >
+              {showPassword ? <EyeOffIcon /> : <EyeIcon />}
+            </button>
             <FieldError message={errors.password} />
           </div>
 
