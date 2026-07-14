@@ -1,10 +1,65 @@
 // Authentication controller skeleton for email verification signup.
 // Business logic is implemented in later milestones.
 
+function isValidEmail(email) {
+  return typeof email === "string" && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+}
+
+function validateSignupBody({ username, email, password }) {
+  if (!username) {
+    return { ok: false, status: 400, message: "Missing username." };
+  }
+
+  if (String(username).length < 3) {
+    return {
+      ok: false,
+      status: 400,
+      message: "Username must be at least 3 characters.",
+    };
+  }
+  if (String(username).length > 100) {
+    return {
+      ok: false,
+      status: 400,
+      message: "Username must be at most 100 characters.",
+    };
+  }
+
+  if (!email) {
+    return { ok: false, status: 400, message: "Missing email." };
+  }
+  if (!isValidEmail(email)) {
+    return { ok: false, status: 400, message: "Invalid email format." };
+  }
+
+  if (!password) {
+    return { ok: false, status: 400, message: "Missing password." };
+  }
+
+  if (String(password).length < 8) {
+    return { ok: false, status: 400, message: "Weak password." };
+  }
+
+  return { ok: true };
+}
+
 async function signup(req, res) {
-  return res.status(501).json({
-    success: false,
-    message: "Not implemented",
+  const { username, email, password } = req.body || {};
+
+  const validation = validateSignupBody({ username, email, password });
+  if (!validation.ok) {
+    return res.status(validation.status).json({
+      success: false,
+      message: validation.message,
+    });
+  }
+
+  // Continue to next milestone for duplicate check / OTP generation.
+  return res.status(200).json({
+    success: true,
+    message: "Signup request validation passed.",
+    // Frontend may ignore extra fields, but we keep email for navigation.
+    email,
   });
 }
 
