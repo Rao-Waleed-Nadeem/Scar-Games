@@ -2,6 +2,7 @@
 // Business logic is implemented in later milestones.
 
 import { findUserByEmail } from "../models/userModel.js";
+import { generateOTP, hashOTP, getExpiryTime } from "../utils/otp.js";
 
 function isValidEmail(email) {
   return typeof email === "string" && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
@@ -65,11 +66,18 @@ async function signup(req, res) {
     });
   }
 
-  // Continue to next milestone for OTP generation.
+  // Milestone M10: Generate OTP + hash + expiry (no DB save, no email send).
+  const otp = generateOTP();
+  const otpHash = hashOTP(otp);
+  const expiresAt = getExpiryTime();
+
   return res.status(200).json({
     success: true,
     message: "Signup request validation passed.",
     email,
+    otp,
+    otpHash,
+    expiresAt,
   });
 }
 
