@@ -10,6 +10,7 @@ import inventoryRoutes from "./routes/inventoryRoutes.js";
 import userRoutes from "./routes/userRoutes.js"; // Optional if you handle login
 import orderItemsRoutes from "./routes/orderItemRoutes.js";
 import paymentsRoutes from "./routes/paymentRoutes.js";
+import authRoutes from "./routes/authRoutes.js";
 
 dotenv.config();
 
@@ -87,6 +88,8 @@ app.use("/api/v1/inventory", inventoryRoutes);
 app.use("/api/v1/orderitem", orderItemsRoutes);
 
 app.use("/api/v1/payment", paymentsRoutes);
+
+app.use("/api/v1/auth", authRoutes);
 
 app.get("/", (req, res) => {
   res.send("Welcome to the Game Store API!");
