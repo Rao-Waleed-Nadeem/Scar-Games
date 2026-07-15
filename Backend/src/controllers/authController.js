@@ -1,13 +1,20 @@
 // Authentication controller skeleton for email verification signup.
 // Business logic is implemented in later milestones.
 
-import { findUserByEmail } from "../models/userModel.js";
+import { findUserByEmail, createUser } from "../models/userModel.js";
 import {
   createVerification,
   deleteVerificationByEmail,
+  deleteVerificationById,
+  findVerificationByEmail,
 } from "../models/verificationModel.js";
 import bcrypt from "bcrypt";
-import { generateOTP, hashOTP, getExpiryTime } from "../utils/otp.js";
+import {
+  generateOTP,
+  hashOTP,
+  getExpiryTime,
+  compareOTP,
+} from "../utils/otp.js";
 import { sendVerificationOTP } from "../utils/email.js";
 
 function isValidEmail(email) {
@@ -191,13 +198,27 @@ async function verifyOTP(req, res) {
     });
   }
 
-  // Successful match: return payload for M16 (user creation) without creating user yet.
-  return res.status(501).json({
-    success: true,
-    message: "OTP verified",
+  // Milestone M16: Create user account.
+  const usernameToCreate = record.username;
+  const passwordHashToUse = record.password_hash || record.passwordHash;
+
+  // Use default role from signup; if verification doesn't contain it, fallback to Customer.
+  const roleToCreate = record.role || "Customer";
+
+  // Create permanent user.
+  const newUser = await createUser({
+    username: usernameToCreate,
     email,
-    username: record.username,
-    passwordHash: record.password_hash || record.passwordHash,
+    password: passwordHashToUse,
+    role: roleToCreate,
+  });
+
+  // Delete verification record only after successful user creation.
+  await deleteVerificationById(record.verification_id || record.verificationId);
+
+  return res.status(200).json({
+    success: true,
+    user: newUser,
   });
 }
 
