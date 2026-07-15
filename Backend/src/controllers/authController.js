@@ -241,9 +241,54 @@ async function verifyOTP(req, res) {
 }
 
 async function resendOTP(req, res) {
-  return res.status(501).json({
-    success: false,
-    message: "Not implemented",
+  // Milestone M18: Implement resend OTP.
+  const { email } = req.body || {};
+
+  if (!email) {
+    return res.status(400).json({
+      success: false,
+      message: "Missing email",
+    });
+  }
+
+  if (!isValidEmail(email)) {
+    return res.status(400).json({
+      success: false,
+      message: "Invalid email",
+    });
+  }
+
+  const record = await findVerificationByEmail(email);
+  if (!record) {
+    return res.status(404).json({
+      success: false,
+      message: "Verification record not found",
+    });
+  }
+
+  const newOtp = generateOTP();
+  const newOtpHash = hashOTP(newOtp);
+  const newExpiresAt = getExpiryTime();
+
+  // Update verification record by replacing old one for the email.
+  // This invalidates the previous OTP immediately (only one active record exists).
+  await createVerification({
+    username: record.username,
+    email,
+    passwordHash: record.password_hash || record.passwordHash,
+    otpHash: newOtpHash,
+    expiresAt: newExpiresAt,
+  });
+
+  await sendVerificationOTP({
+    to: email,
+    otp: newOtp,
+    expiresInSeconds: 300,
+  });
+
+  return res.status(200).json({
+    success: true,
+    message: "New verification code sent.",
   });
 }
 
