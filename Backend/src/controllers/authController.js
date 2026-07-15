@@ -115,6 +115,49 @@ async function signup(req, res) {
 }
 
 async function verifyOTP(req, res) {
+  // Milestone M14: Validate Verify OTP request before any DB calls.
+  const { email, otp } = req.body || {};
+
+  if (!email) {
+    return res.status(400).json({
+      success: false,
+      message: "Missing email",
+    });
+  }
+
+  if (!isValidEmail(email)) {
+    return res.status(400).json({
+      success: false,
+      message: "Invalid email",
+    });
+  }
+
+  if (otp === undefined || otp === null || otp === "") {
+    return res.status(400).json({
+      success: false,
+      message: "Missing OTP",
+    });
+  }
+
+  const otpStr = String(otp);
+
+  // Numeric only
+  if (!/^\d+$/.test(otpStr)) {
+    return res.status(400).json({
+      success: false,
+      message: "Invalid OTP Format",
+    });
+  }
+
+  // Exactly project-defined length (6 digits)
+  if (otpStr.length !== 6) {
+    return res.status(400).json({
+      success: false,
+      message: "Invalid OTP Format",
+    });
+  }
+
+  // Continue to verification logic (M15).
   return res.status(501).json({
     success: false,
     message: "Not implemented",
