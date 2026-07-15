@@ -157,10 +157,47 @@ async function verifyOTP(req, res) {
     });
   }
 
-  // Continue to verification logic (M15).
+  // Milestone M15: Implement OTP verification logic.
+  // Find verification record.
+  const record = await findVerificationByEmail(email);
+
+  if (!record) {
+    return res.status(404).json({
+      success: false,
+      message: "Verification record not found",
+    });
+  }
+
+  // Expiration check.
+  const now = new Date();
+  const expiresAt = record.expires_at || record.expiresAt;
+  if (expiresAt && new Date(expiresAt) <= now) {
+    await deleteVerificationById(
+      record.verification_id || record.verificationId,
+    );
+    return res.status(410).json({
+      success: false,
+      message: "OTP expired",
+    });
+  }
+
+  // Compare OTP hash.
+  const otpHashFromDb = record.otp_hash || record.otpHash;
+  const isMatch = compareOTP(otpStr, otpHashFromDb);
+  if (!isMatch) {
+    return res.status(400).json({
+      success: false,
+      message: "Incorrect OTP",
+    });
+  }
+
+  // Successful match: return payload for M16 (user creation) without creating user yet.
   return res.status(501).json({
-    success: false,
-    message: "Not implemented",
+    success: true,
+    message: "OTP verified",
+    email,
+    username: record.username,
+    passwordHash: record.password_hash || record.passwordHash,
   });
 }
 
