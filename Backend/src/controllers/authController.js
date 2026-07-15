@@ -102,10 +102,6 @@ async function signup(req, res) {
       message: "Verification code sent.",
       email,
       expiresIn: 300,
-      // Frontend can keep using `expiresAt` too; return it for robustness.
-      expiresAt,
-      verificationId:
-        inserted?.verification_id ?? inserted?.recordset?.[0]?.verification_id,
     });
   } catch (error) {
     // Cleanup: do not leave active verification if email sending fails.
