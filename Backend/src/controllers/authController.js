@@ -1,6 +1,8 @@
 // Authentication controller skeleton for email verification signup.
 // Business logic is implemented in later milestones.
 
+import jwt from "jsonwebtoken";
+
 import { findUserByEmail, createUser } from "../models/userModel.js";
 import {
   createVerification,
@@ -216,8 +218,24 @@ async function verifyOTP(req, res) {
   // Delete verification record only after successful user creation.
   await deleteVerificationById(record.verification_id || record.verificationId);
 
+  const JWT_SECRET = process.env.JWT_SECRET;
+
+  const token = jwt.sign(
+    {
+      user_id: newUser.user_id,
+      username: newUser.username,
+      email: newUser.email,
+      role: newUser.role,
+    },
+    JWT_SECRET,
+    {
+      expiresIn: "6h",
+    },
+  );
+
   return res.status(200).json({
     success: true,
+    token,
     user: newUser,
   });
 }
