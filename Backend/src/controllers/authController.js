@@ -2,6 +2,8 @@
 // Business logic is implemented in later milestones.
 
 import { findUserByEmail } from "../models/userModel.js";
+import { createVerification } from "../models/verificationModel.js";
+import bcrypt from "bcrypt";
 import { generateOTP, hashOTP, getExpiryTime } from "../utils/otp.js";
 
 function isValidEmail(email) {
@@ -71,13 +73,26 @@ async function signup(req, res) {
   const otpHash = hashOTP(otp);
   const expiresAt = getExpiryTime();
 
+  // Milestone M11: Store verification record (OTP + password are stored hashed only).
+  // The DB model expects `passwordHash`.
+  const passwordHash = await bcrypt.hash(password, 10);
+
+  const inserted = await createVerification({
+    username,
+    email,
+    passwordHash,
+    otpHash,
+    expiresAt,
+  });
+
   return res.status(200).json({
     success: true,
     message: "Signup request validation passed.",
     email,
-    otp,
-    otpHash,
+    // Return only what frontend needs for the next screen; keep extra fields stable.
     expiresAt,
+    verificationId:
+      inserted?.verification_id ?? inserted?.recordset?.[0]?.verification_id,
   });
 }
 
