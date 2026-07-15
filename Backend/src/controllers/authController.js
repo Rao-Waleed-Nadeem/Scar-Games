@@ -2,9 +2,13 @@
 // Business logic is implemented in later milestones.
 
 import { findUserByEmail } from "../models/userModel.js";
-import { createVerification } from "../models/verificationModel.js";
+import {
+  createVerification,
+  deleteVerificationByEmail,
+} from "../models/verificationModel.js";
 import bcrypt from "bcrypt";
 import { generateOTP, hashOTP, getExpiryTime } from "../utils/otp.js";
+import { sendVerificationOTP } from "../utils/email.js";
 
 function isValidEmail(email) {
   return typeof email === "string" && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
@@ -85,15 +89,33 @@ async function signup(req, res) {
     expiresAt,
   });
 
-  return res.status(200).json({
-    success: true,
-    message: "Signup request validation passed.",
-    email,
-    // Return only what frontend needs for the next screen; keep extra fields stable.
-    expiresAt,
-    verificationId:
-      inserted?.verification_id ?? inserted?.recordset?.[0]?.verification_id,
-  });
+  try {
+    // Milestone M12: Send Verification Email.
+    await sendVerificationOTP({
+      to: email,
+      otp,
+      expiresInSeconds: 300,
+    });
+
+    return res.status(200).json({
+      success: true,
+      message: "Verification code sent.",
+      email,
+      expiresIn: 300,
+      // Frontend can keep using `expiresAt` too; return it for robustness.
+      expiresAt,
+      verificationId:
+        inserted?.verification_id ?? inserted?.recordset?.[0]?.verification_id,
+    });
+  } catch (error) {
+    // Cleanup: do not leave active verification if email sending fails.
+    await deleteVerificationByEmail(email);
+
+    return res.status(500).json({
+      success: false,
+      message: "Failed to send verification email.",
+    });
+  }
 }
 
 async function verifyOTP(req, res) {
