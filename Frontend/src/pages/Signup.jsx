@@ -28,6 +28,8 @@ const MotionWrapper = ({ children }) => (
   </MotionDiv>
 );
 
+const pendingVerificationStorageKey = "pendingSignupVerification";
+
 const EyeIcon = () => (
   <svg
     xmlns="http://www.w3.org/2000/svg"
@@ -151,10 +153,20 @@ export default function Signup() {
       toast.success(result.message);
 
       const expiresIn = Number(result.expiresIn) || 300;
+      const expiresAt = Date.now() + expiresIn * 1000;
+      sessionStorage.setItem(
+        pendingVerificationStorageKey,
+        JSON.stringify({
+          email: formData.email,
+          expiresAt,
+        }),
+      );
+
       navigate("/verify-email", {
+        replace: true,
         state: {
           email: formData.email,
-          expiresAt: Date.now() + expiresIn * 1000,
+          expiresAt,
         },
       });
     } else {

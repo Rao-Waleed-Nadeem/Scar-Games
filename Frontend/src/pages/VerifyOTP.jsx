@@ -29,6 +29,8 @@ const MotionWrapper = ({ children }) => (
   </MotionDiv>
 );
 
+const pendingVerificationStorageKey = "pendingSignupVerification";
+
 const FieldError = ({ message }) =>
   message ? (
     <p className="text-red-400 text-sm mt-2" role="alert">
@@ -48,23 +50,40 @@ export default function VerifyOTP() {
   const navigate = useNavigate();
   const location = useLocation();
 
+  const storedVerification = useMemo(() => {
+    try {
+      const raw = sessionStorage.getItem(pendingVerificationStorageKey);
+      return raw ? JSON.parse(raw) : null;
+    } catch {
+      return null;
+    }
+  }, []);
+
   const stateEmail = location.state?.email;
   const stateExpiresAt = location.state?.expiresAt;
 
-  const { signupEmail, otpLoading, otpError, resendLoading, otpExpiry } =
-    useSelector((s) => s.user);
+  const { otpLoading, otpError, resendLoading } = useSelector((s) => s.user);
 
-  const email = stateEmail || signupEmail || "";
+  const email = stateEmail || storedVerification?.email || "";
 
   const [otp, setOtp] = useState("");
+  const [localOtpError, setLocalOtpError] = useState("");
   const [localCountdown, setLocalCountdown] = useState(0);
+  const [isResending, setIsResending] = useState(false);
   const [localExpiresAtMs, setLocalExpiresAtMs] = useState(() => {
     if (typeof stateExpiresAt === "number") return stateExpiresAt;
     if (stateExpiresAt) {
       const parsed = new Date(stateExpiresAt).getTime();
       if (!Number.isNaN(parsed)) return parsed;
     }
-    return Date.now() + 300 * 1000;
+    if (typeof storedVerification?.expiresAt === "number") {
+      return storedVerification.expiresAt;
+    }
+    if (storedVerification?.expiresAt) {
+      const parsed = new Date(storedVerification.expiresAt).getTime();
+      if (!Number.isNaN(parsed)) return parsed;
+    }
+    return 0;
   });
 
   const expiresAtMs = useMemo(() => {
@@ -73,11 +92,28 @@ export default function VerifyOTP() {
       const stateDate = new Date(stateExpiresAt);
       if (!Number.isNaN(stateDate.getTime())) return stateDate.getTime();
     }
-    if (!otpExpiry) return null;
-    if (typeof otpExpiry === "number") return otpExpiry;
-    const d = new Date(otpExpiry);
+    if (!storedVerification?.expiresAt) return null;
+    if (typeof storedVerification.expiresAt === "number") {
+      return storedVerification.expiresAt;
+    }
+    const d = new Date(storedVerification.expiresAt);
     return Number.isNaN(d.getTime()) ? null : d.getTime();
-  }, [otpExpiry, stateExpiresAt]);
+  }, [stateExpiresAt, storedVerification]);
+
+  const isExpired = localCountdown <= 0;
+
+  useEffect(() => {
+    if (!email || !localExpiresAtMs) {
+      toast.error("Please sign up before verifying your email.");
+      navigate("/signup", { replace: true });
+    }
+  }, [email, localExpiresAtMs, navigate]);
+
+  useEffect(() => {
+    return () => {
+      sessionStorage.removeItem(pendingVerificationStorageKey);
+    };
+  }, []);
 
   useEffect(() => {
     if (typeof expiresAtMs === "number") {
@@ -100,69 +136,121 @@ export default function VerifyOTP() {
     e.preventDefault();
 
     if (!email) {
-      toast.error("Missing email. Please sign up again.");
+      const message = "Missing email. Please sign up again.";
+      setLocalOtpError(message);
+      toast.error(message);
+      return;
+    }
+
+    if (isExpired) {
+      const message = "Verification code expired. Please resend the code.";
+      setLocalOtpError(message);
+      toast.error(message);
       return;
     }
 
     if (otp.length !== 6) {
-      toast.error("Enter the 6-digit verification code.");
+      const message = "Enter the 6-digit verification code.";
+      setLocalOtpError(message);
+      toast.error(message);
       return;
     }
 
+    setLocalOtpError("");
     const result = await dispatch(verifySignupOTP({ email, otp }));
 
     if (result.success) {
       toast.success("Verified successfully.");
-      navigate(localStorage.getItem("redirectAfterLogin") || "/");
+      sessionStorage.removeItem(pendingVerificationStorageKey);
+      navigate(localStorage.getItem("redirectAfterLogin") || "/", {
+        replace: true,
+      });
     } else {
-      toast.error(result.message || "OTP verification failed");
+      const message = result.message || "OTP verification failed";
+      setLocalOtpError(message);
+      toast.error(message);
     }
   };
 
   const handleResend = async () => {
+    if (isResending) return;
+
     if (!email) {
       toast.error("Missing email. Please sign up again.");
       return;
     }
 
+    setIsResending(true);
     const result = await dispatch(resendSignupOTP({ email }));
     if (result.success) {
       toast.success(result.message || "New code sent.");
       setOtp("");
-      setLocalExpiresAtMs(Date.now() + 300 * 1000);
+      setLocalOtpError("");
+      const expiresAt = Date.now() + 300 * 1000;
+      setLocalExpiresAtMs(expiresAt);
+      sessionStorage.setItem(
+        pendingVerificationStorageKey,
+        JSON.stringify({ email, expiresAt }),
+      );
     } else {
       toast.error(result.message || "Failed to resend code");
     }
+    setIsResending(false);
   };
 
   return (
     <div
       className={`min-h-screen flex items-center justify-center ${bgGradient} px-4`}
     >
+      {isResending && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/55 backdrop-blur-sm cursor-wait">
+          <div className="flex flex-col items-center gap-4 text-white">
+            <div className="h-12 w-12 rounded-full border-4 border-white/30 border-t-white animate-spin" />
+            <p className="font-semibold">Sending new verification code...</p>
+          </div>
+        </div>
+      )}
       <MotionWrapper>
         <h1 className="text-3xl font-bold text-white mb-2 text-center">
           Verify Email
         </h1>
         <p className="text-white/80 text-center mb-6">
-          Enter the 6-digit code sent to{" "}
+          {isExpired ? "Your verification code expired for " : "Enter the 6-digit code sent to "}
           <span className="font-semibold">{email}</span>
         </p>
 
         <form onSubmit={handleVerify} noValidate>
-          <div>
-            <input
-              type="text"
-              inputMode="numeric"
-              placeholder="Enter OTP"
-              value={otp}
-              onChange={(e) => {
-                const v = e.target.value.replace(/\D/g, "");
-                setOtp(v.slice(0, 6));
-              }}
-              className={inputStyle}
-              required
-            />
-          </div>
+          {!isExpired && (
+            <div>
+              <input
+                type="text"
+                inputMode="numeric"
+                placeholder="Enter OTP"
+                value={otp}
+                onChange={(e) => {
+                  const v = e.target.value.replace(/\D/g, "");
+                  setOtp(v.slice(0, 6));
+                  setLocalOtpError("");
+                }}
+                onBeforeInput={(e) => {
+                  if (e.data && !/^\d+$/.test(e.data)) {
+                    e.preventDefault();
+                  }
+                }}
+                onPaste={(e) => {
+                  const pasted = e.clipboardData.getData("text");
+                  if (!/^\d+$/.test(pasted)) {
+                    e.preventDefault();
+                    setLocalOtpError("OTP must contain numbers only.");
+                  }
+                }}
+                className={inputStyle}
+                maxLength={6}
+                pattern="[0-9]*"
+                required
+              />
+            </div>
+          )}
 
           <div className="mt-2 text-white/70 text-center">
             {localCountdown > 0 ? (
@@ -172,34 +260,44 @@ export default function VerifyOTP() {
             )}
           </div>
 
-          <FieldError message={otpError} />
+          <FieldError message={localOtpError || otpError} />
 
-          <MotionButton
-            type="submit"
-            className={
-              buttonStyle +
-              " cursor-pointer disabled:cursor-not-allowed" +
-              (otpLoading ? " opacity-60" : "")
+          {!isExpired && (
+            <MotionButton
+              type="submit"
+              className={
+                buttonStyle +
+                " cursor-pointer disabled:cursor-not-allowed" +
+              (otpLoading || isResending ? " opacity-60" : "")
             }
-            disabled={otpLoading}
-            whileHover={otpLoading ? undefined : { scale: 1.03, y: -1 }}
-            whileTap={otpLoading ? undefined : { scale: 0.98 }}
-            transition={{ type: "spring", stiffness: 380, damping: 18 }}
-          >
-            {otpLoading ? "Verifying..." : "Verify"}
-          </MotionButton>
+              disabled={otpLoading || isResending}
+              whileHover={
+                otpLoading || isResending ? undefined : { scale: 1.03, y: -1 }
+              }
+              whileTap={
+                otpLoading || isResending ? undefined : { scale: 0.98 }
+              }
+              transition={{ type: "spring", stiffness: 380, damping: 18 }}
+            >
+              {otpLoading ? "Verifying..." : "Verify"}
+            </MotionButton>
+          )}
 
           <MotionButton
             type="button"
             className={
-              secondaryButtonStyle +
+              (isExpired ? buttonStyle : secondaryButtonStyle) +
               " cursor-pointer disabled:cursor-not-allowed" +
-              (resendLoading ? " opacity-60" : "")
+              (resendLoading || isResending ? " opacity-60" : "")
             }
             onClick={handleResend}
-            disabled={resendLoading}
-            whileHover={resendLoading ? undefined : { scale: 1.03, y: -1 }}
-            whileTap={resendLoading ? undefined : { scale: 0.98 }}
+            disabled={resendLoading || isResending}
+            whileHover={
+              resendLoading || isResending ? undefined : { scale: 1.03, y: -1 }
+            }
+            whileTap={
+              resendLoading || isResending ? undefined : { scale: 0.98 }
+            }
             transition={{ type: "spring", stiffness: 380, damping: 18 }}
           >
             {resendLoading ? "Resending..." : "Resend code"}
