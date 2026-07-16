@@ -2,7 +2,8 @@ import React, { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { Link, useNavigate } from "react-router-dom";
 import { useDispatch, useSelector } from "react-redux";
-import { registerUser } from "../user.store/userThunk"; // adjust your path if needed
+import { requestSignupOTP } from "../user.store/userThunk";
+
 import { toast } from "react-toastify";
 
 const bgGradient =
@@ -12,8 +13,11 @@ const inputStyle =
 const buttonStyle =
   "w-full py-3 mt-4 rounded-lg bg-muPink hover:bg-pink-500 transition-colors text-white font-semibold";
 
+const MotionDiv = motion.div;
+const MotionButton = motion.button;
+
 const MotionWrapper = ({ children }) => (
-  <motion.div
+  <MotionDiv
     initial={{ opacity: 0, y: 20 }}
     animate={{ opacity: 1, y: 0 }}
     exit={{ opacity: 0, y: -20 }}
@@ -21,7 +25,7 @@ const MotionWrapper = ({ children }) => (
     className="bg-white/10 backdrop-blur-md p-8 rounded-xl shadow-xl w-full max-w-md"
   >
     {children}
-  </motion.div>
+  </MotionDiv>
 );
 
 const EyeIcon = () => (
@@ -75,9 +79,8 @@ export default function Signup() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // One error slot per field, plus a general slot for server-side failures
-  // (e.g. "User already exists").
   const [errors, setErrors] = useState({
     username: "",
     email: "",
@@ -87,16 +90,13 @@ export default function Signup() {
 
   const dispatch = useDispatch();
   const navigate = useNavigate();
-  // NOTE: adjust `state.user` below if your store registers the slice under a different key.
   const { userLoggedIn } = useSelector((state) => state.user);
 
-  // Redirect if the user is already logged in
   useEffect(() => {
     if (userLoggedIn) {
-      const redirectTo = localStorage.getItem("redirectAfterLogin") || "/"; // Default to home if not available
-      localStorage.removeItem("redirectAfterLogin"); // Clear the stored URL
+      const redirectTo = localStorage.getItem("redirectAfterLogin") || "/";
+      localStorage.removeItem("redirectAfterLogin");
 
-      // Redirect to the saved page
       navigate(redirectTo);
     }
   }, [userLoggedIn, navigate]);
@@ -107,6 +107,7 @@ export default function Signup() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (isSubmitting) return;
 
     const fieldErrors = {
       username: "",
@@ -135,7 +136,7 @@ export default function Signup() {
       return;
     }
 
-    setErrors(fieldErrors); // clear any stale errors
+    setErrors(fieldErrors);
 
     const formData = {
       username: name.trim(),
@@ -143,21 +144,24 @@ export default function Signup() {
       password,
     };
 
-    const result = await dispatch(registerUser(formData));
+    setIsSubmitting(true);
+    const result = await dispatch(requestSignupOTP(formData));
 
     if (result.success) {
       toast.success(result.message);
 
-      const redirectTo = localStorage.getItem("redirectAfterLogin") || "/";
-
-      localStorage.removeItem("redirectAfterLogin");
-
-      navigate(redirectTo);
+      const expiresIn = Number(result.expiresIn) || 300;
+      navigate("/verify-email", {
+        state: {
+          email: formData.email,
+          expiresAt: Date.now() + expiresIn * 1000,
+        },
+      });
     } else {
+      setIsSubmitting(false);
       toast.error(result.message);
       setErrors((prev) => ({ ...prev, general: result.message }));
 
-      // Clear password on failure; keep username/email so the user doesn't retype them.
       setPassword("");
     }
   };
@@ -166,6 +170,14 @@ export default function Signup() {
     <div
       className={`min-h-screen flex items-center justify-center ${bgGradient} px-4`}
     >
+      {isSubmitting && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/55 backdrop-blur-sm cursor-wait">
+          <div className="flex flex-col items-center gap-4 text-white">
+            <div className="h-12 w-12 rounded-full border-4 border-white/30 border-t-white animate-spin" />
+            <p className="font-semibold">Sending verification code...</p>
+          </div>
+        </div>
+      )}
       <MotionWrapper>
         <h1 className="text-3xl font-bold text-white mb-6 text-center">
           Sign Up
@@ -181,6 +193,7 @@ export default function Signup() {
                 clearError("username");
               }}
               className={inputStyle}
+              disabled={isSubmitting}
               required
             />
             <FieldError message={errors.username} />
@@ -196,6 +209,7 @@ export default function Signup() {
                 clearError("email");
               }}
               className={inputStyle}
+              disabled={isSubmitting}
               required
             />
             <FieldError message={errors.email} />
@@ -211,6 +225,7 @@ export default function Signup() {
                 clearError("password");
               }}
               className={`${inputStyle} pr-12`}
+              disabled={isSubmitting}
               required
             />
             <button
@@ -219,6 +234,7 @@ export default function Signup() {
               className="absolute right-3 top-1/2 -translate-y-1/2 text-white/70 hover:text-white cursor-pointer"
               aria-label={showPassword ? "Hide password" : "Show password"}
               tabIndex={-1}
+              disabled={isSubmitting}
             >
               {showPassword ? <EyeOffIcon /> : <EyeIcon />}
             </button>
@@ -227,9 +243,16 @@ export default function Signup() {
 
           <FieldError message={errors.general} />
 
-          <button type="submit" className={`${buttonStyle} cursor-pointer`}>
-            Create Account
-          </button>
+          <MotionButton
+            type="submit"
+            className={`${buttonStyle} cursor-pointer disabled:cursor-not-allowed disabled:opacity-70`}
+            disabled={isSubmitting}
+            whileHover={isSubmitting ? undefined : { scale: 1.03, y: -1 }}
+            whileTap={isSubmitting ? undefined : { scale: 0.98 }}
+            transition={{ type: "spring", stiffness: 380, damping: 18 }}
+          >
+            {isSubmitting ? "Sending..." : "Create Account"}
+          </MotionButton>
         </form>
         <p className="text-white mt-4 text-center">
           Already have an account?{" "}

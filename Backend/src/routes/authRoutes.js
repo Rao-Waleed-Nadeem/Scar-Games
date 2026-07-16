@@ -1,15 +1,16 @@
-const express = require("express");
-const authController = require("../controllers/authController");
+import express from "express";
+// const authController = require("../controllers/authController");
+import { signup, verifyOTP, resendOTP } from "../controllers/authController.js";
 
 const router = express.Router();
 
 // Signup: request OTP
-router.post("/signup", authController.signup);
+router.post("/signup", signup);
 
 // Verify: submit OTP
-router.post("/verify", authController.verifyOTP);
+router.post("/verify", verifyOTP);
 
 // Resend: request new OTP
-router.post("/resend", authController.resendOTP);
+router.post("/resend", resendOTP);
 
-module.exports = router;
+export default router;

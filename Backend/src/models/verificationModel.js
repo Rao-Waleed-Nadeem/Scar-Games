@@ -1,4 +1,4 @@
-const db = require("../utils/db");
+import { sql } from "../utils/db.js";
 
 // Model responsibility: SQL only for EmailVerifications.
 
@@ -9,21 +9,15 @@ async function createVerification({
   otpHash,
   expiresAt,
 }) {
-  const query = `
-    INSERT INTO dbo.EmailVerifications (username, email, password_hash, otp_hash, expires_at)
+  const result = await sql.query`
+    INSERT INTO dbo.EmailVerifications
+      (username, email, password_hash, otp_hash, expires_at)
     OUTPUT INSERTED.verification_id
-    VALUES (@username, @email, @password_hash, @otp_hash, @expires_at);
+    VALUES
+      (${username}, ${email}, ${passwordHash}, ${otpHash}, ${expiresAt});
   `;
 
-  const result = await db.query(query, {
-    username,
-    email,
-    password_hash: passwordHash,
-    otp_hash: otpHash,
-    expires_at: expiresAt,
-  });
-
-  return result;
+  return result.recordset[0];
 }
 
 async function upsertVerification({
@@ -33,7 +27,6 @@ async function upsertVerification({
   otpHash,
   expiresAt,
 }) {
-  // Ensures at most one active record per email by deleting existing and inserting a new one.
   await deleteVerificationByEmail(email);
   return createVerification({
     username,
@@ -45,7 +38,7 @@ async function upsertVerification({
 }
 
 async function findVerificationByEmail(email) {
-  const query = `
+  const result = await sql.query`
     SELECT TOP 1
       verification_id,
       username,
@@ -55,38 +48,31 @@ async function findVerificationByEmail(email) {
       expires_at,
       created_at
     FROM dbo.EmailVerifications
-    WHERE email = @email;
+    WHERE email = ${email};
   `;
 
-  const result = await db.query(query, { email });
-  return result && Array.isArray(result) ? result[0] : result;
+  return result.recordset[0];
 }
 
 async function deleteVerificationById(verificationId) {
-  const query = `
+  return await sql.query`
     DELETE FROM dbo.EmailVerifications
-    WHERE verification_id = @verification_id;
+    WHERE verification_id = ${verificationId};
   `;
-
-  return db.query(query, { verification_id: verificationId });
 }
 
 async function deleteVerificationByEmail(email) {
-  const query = `
+  return await sql.query`
     DELETE FROM dbo.EmailVerifications
-    WHERE email = @email;
+    WHERE email = ${email};
   `;
-
-  return db.query(query, { email });
 }
 
 async function deleteExpiredVerifications({ now = new Date() } = {}) {
-  const query = `
+  return await sql.query`
     DELETE FROM dbo.EmailVerifications
-    WHERE expires_at <= @now;
+    WHERE expires_at <= ${now};
   `;
-
-  return db.query(query, { now });
 }
 
 async function replaceVerification({
@@ -105,7 +91,7 @@ async function replaceVerification({
   });
 }
 
-module.exports = {
+export {
   createVerification,
   upsertVerification,
   findVerificationByEmail,

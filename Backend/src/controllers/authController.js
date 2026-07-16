@@ -1,14 +1,11 @@
-// Authentication controller skeleton for email verification signup.
-// Business logic is implemented in later milestones.
-
 import jwt from "jsonwebtoken";
 
 import { findUserByEmail, createUser } from "../models/userModel.js";
 import {
-  createVerification,
   deleteVerificationByEmail,
   deleteVerificationById,
   findVerificationByEmail,
+  replaceVerification,
 } from "../models/verificationModel.js";
 import bcrypt from "bcrypt";
 import {
@@ -19,11 +16,11 @@ import {
 } from "../utils/otp.js";
 import { sendVerificationOTP } from "../utils/email.js";
 
-function isValidEmail(email) {
+export const isValidEmail = (email) => {
   return typeof email === "string" && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
-}
+};
 
-function validateSignupBody({ username, email, password }) {
+export const validateSignupBody = ({ username, email, password }) => {
   if (!username) {
     return { ok: false, status: 400, message: "Missing username." };
   }
@@ -59,9 +56,21 @@ function validateSignupBody({ username, email, password }) {
   }
 
   return { ok: true };
-}
+};
 
-async function signup(req, res) {
+const getEmailErrorMessage = (error) => {
+  if (error.code === "EMAIL_CONFIG_MISSING") {
+    return error.message;
+  }
+
+  if (error.code === "EAUTH") {
+    return "SMTP authentication failed. Check SMTP_USER and SMTP_PASS in Backend/.env. Gmail requires an App Password.";
+  }
+
+  return "Failed to send verification email.";
+};
+
+export const signup = async (req, res) => {
   const { username, email, password } = req.body || {};
 
   const validation = validateSignupBody({ username, email, password });
@@ -72,7 +81,6 @@ async function signup(req, res) {
     });
   }
 
-  // Milestone M09: Duplicate email check before any OTP generation/storage.
   const existing = await findUserByEmail(email);
   if (existing) {
     return res.status(409).json({
@@ -81,16 +89,13 @@ async function signup(req, res) {
     });
   }
 
-  // Milestone M10: Generate OTP + hash + expiry (no DB save, no email send).
   const otp = generateOTP();
   const otpHash = hashOTP(otp);
   const expiresAt = getExpiryTime();
 
-  // Milestone M11: Store verification record (OTP + password are stored hashed only).
-  // The DB model expects `passwordHash`.
   const passwordHash = await bcrypt.hash(password, 10);
 
-  const inserted = await createVerification({
+  await replaceVerification({
     username,
     email,
     passwordHash,
@@ -99,7 +104,6 @@ async function signup(req, res) {
   });
 
   try {
-    // Milestone M12: Send Verification Email.
     await sendVerificationOTP({
       to: email,
       otp,
@@ -116,15 +120,19 @@ async function signup(req, res) {
     // Cleanup: do not leave active verification if email sending fails.
     await deleteVerificationByEmail(email);
 
+    console.error("Failed to send verification email:", {
+      code: error.code,
+      message: error.message,
+    });
+
     return res.status(500).json({
       success: false,
-      message: "Failed to send verification email.",
+      message: getEmailErrorMessage(error),
     });
   }
-}
+};
 
-async function verifyOTP(req, res) {
-  // Milestone M14: Validate Verify OTP request before any DB calls.
+export const verifyOTP = async (req, res) => {
   const { email, otp } = req.body || {};
 
   if (!email) {
@@ -150,7 +158,6 @@ async function verifyOTP(req, res) {
 
   const otpStr = String(otp);
 
-  // Numeric only
   if (!/^\d+$/.test(otpStr)) {
     return res.status(400).json({
       success: false,
@@ -158,7 +165,6 @@ async function verifyOTP(req, res) {
     });
   }
 
-  // Exactly project-defined length (6 digits)
   if (otpStr.length !== 6) {
     return res.status(400).json({
       success: false,
@@ -166,8 +172,6 @@ async function verifyOTP(req, res) {
     });
   }
 
-  // Milestone M15: Implement OTP verification logic.
-  // Find verification record.
   const record = await findVerificationByEmail(email);
 
   if (!record) {
@@ -177,7 +181,6 @@ async function verifyOTP(req, res) {
     });
   }
 
-  // Expiration check.
   const now = new Date();
   const expiresAt = record.expires_at || record.expiresAt;
   if (expiresAt && new Date(expiresAt) <= now) {
@@ -190,7 +193,6 @@ async function verifyOTP(req, res) {
     });
   }
 
-  // Compare OTP hash.
   const otpHashFromDb = record.otp_hash || record.otpHash;
   const isMatch = compareOTP(otpStr, otpHashFromDb);
   if (!isMatch) {
@@ -200,14 +202,10 @@ async function verifyOTP(req, res) {
     });
   }
 
-  // Milestone M16: Create user account.
   const usernameToCreate = record.username;
   const passwordHashToUse = record.password_hash || record.passwordHash;
-
-  // Use default role from signup; if verification doesn't contain it, fallback to Customer.
   const roleToCreate = record.role || "Customer";
 
-  // Create permanent user.
   const newUser = await createUser({
     username: usernameToCreate,
     email,
@@ -215,7 +213,6 @@ async function verifyOTP(req, res) {
     role: roleToCreate,
   });
 
-  // Delete verification record only after successful user creation.
   await deleteVerificationById(record.verification_id || record.verificationId);
 
   const JWT_SECRET = process.env.JWT_SECRET;
@@ -238,10 +235,9 @@ async function verifyOTP(req, res) {
     token,
     user: newUser,
   });
-}
+};
 
-async function resendOTP(req, res) {
-  // Milestone M18: Implement resend OTP.
+export const resendOTP = async (req, res) => {
   const { email } = req.body || {};
 
   if (!email) {
@@ -270,9 +266,7 @@ async function resendOTP(req, res) {
   const newOtpHash = hashOTP(newOtp);
   const newExpiresAt = getExpiryTime();
 
-  // Update verification record by replacing old one for the email.
-  // This invalidates the previous OTP immediately (only one active record exists).
-  await createVerification({
+  await replaceVerification({
     username: record.username,
     email,
     passwordHash: record.password_hash || record.passwordHash,
@@ -280,20 +274,26 @@ async function resendOTP(req, res) {
     expiresAt: newExpiresAt,
   });
 
-  await sendVerificationOTP({
-    to: email,
-    otp: newOtp,
-    expiresInSeconds: 300,
-  });
+  try {
+    await sendVerificationOTP({
+      to: email,
+      otp: newOtp,
+      expiresInSeconds: 300,
+    });
+  } catch (error) {
+    console.error("Failed to resend verification email:", {
+      code: error.code,
+      message: error.message,
+    });
+
+    return res.status(500).json({
+      success: false,
+      message: getEmailErrorMessage(error),
+    });
+  }
 
   return res.status(200).json({
     success: true,
     message: "New verification code sent.",
   });
-}
-
-module.exports = {
-  signup,
-  verifyOTP,
-  resendOTP,
 };

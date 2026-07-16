@@ -29,7 +29,7 @@ export const createUser = async ({ username, email, password, role }) => {
     VALUES (${username}, ${email}, ${password}, ${role})
   `;
   const result = await sql.query`
-  SELECT TOP 1 user_id,username,email FROM Users 
+  SELECT TOP 1 user_id, username, email, role FROM Users 
     WHERE username = ${username} 
   `;
   return fixBigInt(result.recordset[0]);

@@ -13,6 +13,7 @@ import DeleteGame from "../pages/DeleteGame";
 import Payment from "../pages/Payment";
 import UserOrderHistory from "../pages/UserOrderHistory";
 import AllOrdersToAdmin from "../pages/AllOrdersToAdmin";
+import VerifyOTP from "../pages/VerifyOTP";
 
 const AppRoutes = () => (
   <Routes>
@@ -27,6 +28,7 @@ const AppRoutes = () => (
     <Route path="/login" element={<Login />} />
     <Route path="/logout" element={<Logout />} />
     <Route path="/signup" element={<Signup />} />
+    <Route path="/verify-email" element={<VerifyOTP />} />
     <Route path="/add-game" element={<InsertGame />} />
     <Route path="/update-game" element={<UpdateGame />} />
     <Route path="/delete-game" element={<DeleteGame />} />
