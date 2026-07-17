@@ -16,6 +16,13 @@ export const findUserByEmail = async (email) => {
   return result.recordset[0];
 };
 
+export const findPublicUserByEmail = async (email) => {
+  const result = await sql.query`
+    SELECT user_id, username, email, role FROM Users WHERE email = ${email}
+  `;
+  return fixBigInt(result.recordset[0]);
+};
+
 export const findUserByUsername = async (username) => {
   const result = await sql.query`
     SELECT * FROM Users WHERE username = ${username}
@@ -33,6 +40,20 @@ export const createUser = async ({ username, email, password, role }) => {
     WHERE username = ${username} 
   `;
   return fixBigInt(result.recordset[0]);
+};
+
+export const createGoogleUser = async ({
+  username,
+  email,
+  passwordHash,
+  role = "Customer",
+}) => {
+  await sql.query`
+    INSERT INTO Users (username, email, password, role)
+    VALUES (${username}, ${email}, ${passwordHash}, ${role})
+  `;
+
+  return findPublicUserByEmail(email);
 };
 
 export const getUserById = async (id) => {

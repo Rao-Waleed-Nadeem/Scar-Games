@@ -1,6 +1,11 @@
 import jwt from "jsonwebtoken";
 
-import { findUserByEmail, createUser } from "../models/userModel.js";
+import {
+  findUserByEmail,
+  createUser,
+  findPublicUserByEmail,
+  createGoogleUser,
+} from "../models/userModel.js";
 import {
   deleteVerificationByEmail,
   deleteVerificationById,
@@ -69,6 +74,19 @@ const getEmailErrorMessage = (error) => {
   }
 
   return "Failed to send verification email.";
+};
+
+const buildGoogleUsername = ({ name, email }) => {
+  const fallbackName = email ? email.split("@")[0] : "Google User";
+  const username = String(name || fallbackName)
+    .trim()
+    .replace(/\s+/g, " ");
+
+  if (username.length >= 3) {
+    return username.slice(0, 100);
+  }
+
+  return "Google User";
 };
 
 export const signup = async (req, res) => {
@@ -312,11 +330,33 @@ export const googleAuth = async (req, res) => {
 
   try {
     const googleProfile = await verifyGoogleIdToken(googleToken);
+    let user = await findPublicUserByEmail(googleProfile.email);
+    let isNewUser = false;
+
+    if (!user) {
+      const passwordHash = await bcrypt.hash(
+        `google-auth:${googleProfile.googleId}:${googleProfile.email}`,
+        10,
+      );
+
+      user = await createGoogleUser({
+        username: buildGoogleUsername({
+          name: googleProfile.name,
+          email: googleProfile.email,
+        }),
+        email: googleProfile.email,
+        passwordHash,
+      });
+      isNewUser = true;
+    }
 
     return res.status(200).json({
       success: true,
-      message: "Google identity verified.",
-      googleProfile,
+      message: isNewUser
+        ? "Google user created."
+        : "Google user authenticated.",
+      user,
+      provider: "google",
     });
   } catch (error) {
     const status =
