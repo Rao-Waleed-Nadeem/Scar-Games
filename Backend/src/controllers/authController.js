@@ -15,6 +15,7 @@ import {
   compareOTP,
 } from "../utils/otp.js";
 import { sendVerificationOTP } from "../utils/email.js";
+import { verifyGoogleIdToken } from "../utils/googleAuth.js";
 
 export const isValidEmail = (email) => {
   return typeof email === "string" && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
@@ -296,4 +297,40 @@ export const resendOTP = async (req, res) => {
     success: true,
     message: "New verification code sent.",
   });
+};
+
+export const googleAuth = async (req, res) => {
+  const { idToken, credential } = req.body || {};
+  const googleToken = idToken || credential;
+
+  if (!googleToken) {
+    return res.status(400).json({
+      success: false,
+      message: "Missing Google ID token.",
+    });
+  }
+
+  try {
+    const googleProfile = await verifyGoogleIdToken(googleToken);
+
+    return res.status(200).json({
+      success: true,
+      message: "Google identity verified.",
+      googleProfile,
+    });
+  } catch (error) {
+    const status =
+      error.code === "GOOGLE_CONFIG_MISSING"
+        ? 500
+        : error.code === "GOOGLE_AUDIENCE_MISMATCH" ||
+            error.code === "GOOGLE_EMAIL_UNVERIFIED" ||
+            error.code === "GOOGLE_EMAIL_MISSING"
+          ? 401
+          : 400;
+
+    return res.status(status).json({
+      success: false,
+      message: error.message || "Google authentication failed.",
+    });
+  }
 };
