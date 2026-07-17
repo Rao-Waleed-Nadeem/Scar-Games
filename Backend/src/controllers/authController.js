@@ -350,12 +350,24 @@ export const googleAuth = async (req, res) => {
       isNewUser = true;
     }
 
+    const JWT_SECRET = process.env.JWT_SECRET || "your_secret_key";
+
+    const token = jwt.sign(
+      { user_id: user.user_id, email: user.email },
+      JWT_SECRET,
+      {
+        expiresIn: "6h",
+      },
+    );
+
     return res.status(200).json({
       success: true,
       message: isNewUser
         ? "Google user created."
         : "Google user authenticated.",
       user,
+      accessToken: token,
+      token,
       provider: "google",
     });
   } catch (error) {
