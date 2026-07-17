@@ -12,25 +12,114 @@ This repository contains a small full-stack game store:
 ```
 DB-Project-Game-Store/
   Backend/
-    src/
-      server.js
-      routes/
-      controllers/
-      models/
-      middlewares/
-      utils/
     database/
       schema.sql
       seed.sql
       setup-db.js
-    docker-compose.yml
-  Frontend/
     src/
-      pages/
+      controllers/
+        authController.js (email verification OTP)
+        gameController.js
+        inventoryController.js
+        orderController.js
+        orderItemController.js
+        paymentController.js
+        userController.js
+      models/
+        gameModel.js
+        inventoryModel.js
+        orderItemModel.js
+        orderModel.js
+        paymentModel.js
+        userModel.js (used by verified signup)
+        verificationModel.js (email verification OTP)
       routes/
-      components/
-      *.store/ (Redux slices + thunks)
+        authRoutes.js (email verification OTP)
+        gameRoutes.js
+        inventoryRoutes.js
+        orderItemRoutes.js
+        orderRoutes.js
+        paymentRoutes.js
+        userRoutes.js
       utils/
+        db.js
+        email.js (send verification email)
+        otp.js (OTP generate/verify)
+      server.js (mounts auth routes)
+    DB_SETUP_ROADMAP.md
+    TODO.md
+    docker-compose.yml
+    package-lock.json
+    package.json
+  Docs/
+    signup-email-verification/
+      00_Foundation_And_Architecture.md
+      01_Implementation_milestones.md
+      02_Testing_Deployment_AI_Handoff.md
+  Frontend/
+    public/
+      vite.svg
+    src/
+      assets/
+        Images/
+          banner.jpeg
+        react.svg
+      cart.store/
+        cartSlice.js
+        cartStorage.js
+        cartThunk.js
+      components/
+        Footer.jsx
+        Header.jsx
+      game.store/
+        gameSlice.js
+        gameThunk.js
+      inventory.store/
+        inventorySlice.js
+        inventoryThunk.js
+      order.store/
+        orderSlice.js
+        orderThunk.js
+      orderItem.store/
+        orderItemSlice.js
+        orderItemThunk.js
+      pages/
+        Admin.jsx
+        AllOrdersToAdmin.jsx
+        Cart.jsx
+        DeleteGame.jsx
+        Home.jsx
+        InsertGame.jsx
+        Login.jsx
+        Logout.jsx
+        OrderSummary.jsx
+        Payment.jsx
+        ProductDetail.jsx
+        Signup.jsx (requests signup OTP)
+        UpdateGame.jsx
+        UserOrderHistory.jsx
+        VerifyOTP.jsx (email verification OTP)
+      payment.store/
+        paymentSlice.js
+        paymentThunk.js
+      routes/
+        AppRoutes.jsx (registers /verify-email)
+      user.store/
+        userSlice.js (OTP verification state)
+        userThunk.js (OTP request/verify/resend thunks)
+      utils/
+        api.js
+        httpMessages.js
+        store.js
+      App.css
+      App.jsx
+      index.css
+      main.jsx
+    eslint.config.js
+    index.html
+    package-lock.json
+    package.json
+    vite.config.js
   README.md
 ```
 
@@ -48,7 +137,39 @@ DB-Project-Game-Store/
 
 - **`Backend/src/routes/`** defines the URL structure and maps endpoints to controller functions.
 
+### Email verification (OTP)
+
+This project implements signup email verification using a 6-digit OTP.
+
+#### Backend endpoints
+
+- `POST /api/v1/auth/signup` → Request OTP
+  - Generates OTP, stores `otp_hash` + `expires_at` in `dbo.EmailVerifications`, and sends the OTP email.
+
+- `POST /api/v1/auth/verify` → Verify OTP
+  - Validates email + OTP, checks expiry, creates the user, deletes the verification record, and returns a JWT.
+
+- `POST /api/v1/auth/resend` → Resend OTP
+  - Replaces the OTP hash/expiry in `dbo.EmailVerifications` and sends a new OTP email.
+
+#### Frontend flow
+
+- `Frontend/src/pages/Signup.jsx`
+  - Calls `requestSignupOTP(...)`.
+  - Saves `{ email, expiresAt }` in `sessionStorage`.
+  - Navigates to `/verify-email`.
+
+- `Frontend/src/pages/VerifyOTP.jsx`
+  - Dispatches `verifySignupOTP({ email, otp })`.
+  - Shows a countdown until expiry.
+  - Supports `resendSignupOTP({ email })` to request a new OTP.
+
 Routes by feature:
+
+- **`Backend/src/routes/authRoutes.js`**
+  - `POST /api/v1/auth/signup`
+  - `POST /api/v1/auth/verify`
+  - `POST /api/v1/auth/resend`
 
 - **`Backend/src/routes/userRoutes.js`**
   - `POST /api/v1/users/signup`
@@ -100,6 +221,9 @@ Controllers implement the request handlers for each feature.
   - Handles signup/login JWT flow and user lookup.
   - Note: some session-related code is commented out.
 
+- **`Backend/src/controllers/authController.js`**
+  - Handles the email verification OTP signup flow: request OTP, verify OTP, resend OTP, create the user after verification, and return a JWT.
+
 - **`Backend/src/controllers/gameController.js`**
   - Implements create/update/delete and list/fetch for games.
 
@@ -128,6 +252,10 @@ Models implement DB operations (SQL queries) used by controllers.
 - **`Backend/src/models/userModel.js`**
   - User CRUD and lookup queries.
   - Contains `fixBigInt()` helper to normalize SQL results.
+  - Reused by verified signup after OTP validation succeeds.
+
+- **`Backend/src/models/verificationModel.js`**
+  - Creates, finds, replaces, updates, and deletes temporary signup records in `EmailVerifications`.
 
 - **`Backend/src/models/gameModel.js`**
   - Inserts/updates/deletes games and reads games.
@@ -154,6 +282,7 @@ Models implement DB operations (SQL queries) used by controllers.
 ### Database setup
 
 - **`Backend/database/schema.sql`**: SQL Server schema (tables + constraints + indexes).
+  - Includes the `EmailVerifications` table for temporary OTP signup records.
 - **`Backend/database/seed.sql`**: minimal seed data for demo usage.
 - **`Backend/database/setup-db.js`**
   - Reads `schema.sql` + `seed.sql` and executes them in `GO`-separated batches.
@@ -182,6 +311,7 @@ Models implement DB operations (SQL queries) used by controllers.
     - `/order-summary` → `OrderSummary`
     - `/payment/:order_id` → `Payment`
     - `/login`, `/logout`, `/signup`
+    - `/verify-email`
     - `/admin-dashboard`, `/admin/orders`
     - `/add-game`, `/update-game`, `/delete-game`
 
@@ -231,9 +361,12 @@ Redux “stores” group slice state + thunk actions.
 Thunks (async action creators) shown in opened tabs:
 
 - **`Frontend/src/user.store/userThunk.js`**
-  - Signup/login/current-user/logout thunks.
+  - Signup OTP request, OTP verify, resend OTP, login/current-user/logout thunks.
   - Uses `sessionStorage` to store `accessToken`.
   - Adds `Authorization: Bearer <token>` when calling current-user.
+
+- **`Frontend/src/user.store/userSlice.js`**
+  - Stores user auth state plus OTP UI state such as loading, resend loading, verification status, and errors.
 
 - **`Frontend/src/cart.store/cartThunk.js`**
   - Manages cart persistence via `cartStorage`.
